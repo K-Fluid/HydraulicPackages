@@ -1,15 +1,29 @@
 package Accumulators
-  model IdealAccumulator "Simple tank with inlet/outlet ports"
-      import Modelica.Constants.pi;
-  
+  model IdealAccumulator "Accumulator model filled with ideal Nitrogen gas"
+    import Modelica.Constants.pi;
+    // スコープの調整
+    import SI = Modelica.Units.SI;
+    import Modelica.Fluid.Types;
+    import Modelica.Fluid;
+    
+    // 空気の物性モデルと状態変数
+    // Air
+    replaceable package Air = Modelica.Media.Air.DryAirNasa;
+    Air.BaseProperties air;
+    SI.Volume V_air;
+    SI.Mass M_air;
+    SI.Energy U_air;
+    
     // Tank properties
     SI.Height level(stateSelect=StateSelect.prefer, start=level_start_eps)
         "Level height of tank";
     SI.Volume V(stateSelect=StateSelect.never) "Actual tank volume";
   
     // Tank geometry
-    parameter SI.Height height "Height of tank";
-    parameter SI.Area crossArea "Area of tank";
+    // 形状情報を追加
+    parameter SI.Height height = 0.2 "Height of tank";
+    parameter SI.Area crossArea = 0.1 "Area of tank";
+    parameter SI.Volume V_total = height * crossArea;
   
     // Ambient
     parameter Medium.AbsolutePressure p_ambient=system.p_ambient
@@ -20,7 +34,9 @@ package Accumulators
       annotation(Dialog(tab = "Assumptions", group = "Ambient"));
   
     // Initialization
-    parameter SI.Height level_start(min=0) = 0.5*height
+    // 初期水位を変更
+    parameter SI.Height level_start(min = 0) = 0.08
+    //parameter SI.Height level_start(min=0) = 0.5*height
         "Start value of tank level"
       annotation(Dialog(tab="Initialization"));
   
@@ -32,7 +48,20 @@ package Accumulators
       final vesselArea = crossArea,
       heatTransfer(surfaceAreas={crossArea+2*sqrt(crossArea*pi)*level}),
       final initialize_p = false,
-      final p_start = p_ambient);
+      final p_start = p_ambient,
+      
+      // 初期温度，圧力を設定値にする
+      energyDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial,
+      massDynamics = Modelica.Fluid.Types.Dynamics.FixedInitial,
+      
+      // タンク出入り口の設定
+      nPorts = 2,
+      portsData = {
+        Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.025, height = 0.08),
+        Modelica.Fluid.Vessels.BaseClasses.VesselPortsData(diameter = 0.015, height = 0.08) 
+      },
+      use_portsData = true
+    );
   
     protected
     final parameter SI.Height level_start_eps = max(level_start, Modelica.Constants.eps);
@@ -40,14 +69,26 @@ package Accumulators
   equation
     // Total quantities
     V = crossArea*level "Volume of fluid";
-    medium.p = p_ambient;
+    
+    // 境界条件を追加
+    medium.p = air.p;
+    //medium.p = p_ambient;
+    V_air = V_total - V;
+    M_air = air.d * V_air;
+    U_air = air.u * M_air;
+    der(M_air) = 0;
   
     // Source termsEnergy balance
     if Medium.singleState or energyDynamics == Types.Dynamics.SteadyState then
       Wb_flow = 0
           "Mechanical work is neglected, since also neglected in medium model (otherwise unphysical small temperature change, if tank level changes)";
+      
+      // エネルギー保存式を追加
+      der(U_air) = 0;
     else
-      Wb_flow = -p_ambient*der(V);
+      Wb_flow = -medium.p * der(V);
+      //Wb_flow = -p_ambient*der(V);
+      der(U_air) = -Wb_flow;
     end if;
   
     //Determine port properties
@@ -61,6 +102,11 @@ package Accumulators
     elseif massDynamics == Types.Dynamics.SteadyStateInitial then
       der(level) = 0;
     end if;
+    
+    // 初期条件を追加
+    air.p = p_ambient;
+    air.T = T_ambient;
+    medium.p = p_ambient;
   
       annotation (defaultComponentName="tank",
         Icon(coordinateSystem(
@@ -131,4 +177,29 @@ package Accumulators
   </ul>
   </html>"));
   end IdealAccumulator;
+  
+  model PressureTankTest1
+    replaceable package Medium = Modelica.Media.Water.StandardWater;
+    Modelica.Blocks.Sources.Ramp ramp1(duration = 10, height = 0.1, offset = 0, startTime = 0) annotation(
+      Placement(visible = true, transformation(origin = {-70, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    inner Modelica.Fluid.System system annotation(
+      Placement(visible = true, transformation(origin = {50, 50}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    Modelica.Blocks.Sources.Ramp ramp2(duration = 10, height = -0.2, offset = 0, startTime = 120) annotation(
+      Placement(visible = true, transformation(origin = {60, 0}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    Modelica.Fluid.Sources.MassFlowSource_T boundary(redeclare package Medium = Medium, nPorts = 1, use_m_flow_in = true) annotation(
+      Placement(visible = true, transformation(origin = {-32, -50}, extent = {{-10, -10}, {10, 10}}, rotation = 0)));
+    Modelica.Fluid.Sources.MassFlowSource_T boundary1(redeclare package Medium = Medium, m_flow = 0, nPorts = 1, use_m_flow_in = true) annotation(
+      Placement(visible = true, transformation(origin = {30, -50}, extent = {{-10, -10}, {10, 10}}, rotation = 180)));
+  IdealAccumulator tank(redeclare package Medium = Medium, nPorts = 2)  annotation(
+      Placement(visible = true, transformation(origin = {0, 2}, extent = {{-20, -20}, {20, 20}}, rotation = 0)));
+  equation
+    connect(ramp1.y, boundary.m_flow_in) annotation(
+      Line(points = {{-58, 0}, {-52, 0}, {-52, -42}, {-42, -42}}, color = {0, 0, 127}));
+    connect(ramp2.y, boundary1.m_flow_in) annotation(
+      Line(points = {{72, 0}, {82, 0}, {82, -46}, {42, -46}}, color = {0, 0, 127}));
+  connect(boundary.ports[1], tank.ports[1]) annotation(
+      Line(points = {{-22, -50}, {0, -50}, {0, -18}}, color = {0, 127, 255}));
+  connect(boundary1.ports[1], tank.ports[2]) annotation(
+      Line(points = {{20, -50}, {0, -50}, {0, -18}}, color = {0, 127, 255}));
+  end PressureTankTest1;
 end Accumulators;
