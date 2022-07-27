@@ -7,8 +7,8 @@ package Accumulators
     import Modelica.Fluid;
     // 封入気体の物性モデルと状態変数
     // Filled gas
-    replaceable package Air = Modelica.Media.Air.DryAirNasa;
-    Air.BaseProperties gas;
+    replaceable package N2 = Modelica.Media.IdealGases.SingleGases.N2;
+    N2.BaseProperties gas;
     SI.Volume V_gas;
     SI.Mass M_gas;
     SI.Energy U_gas;
