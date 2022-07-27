@@ -1,5 +1,8 @@
 package Media
-  partial package vdWGas "Medium model of an van der Waals gas"
+  //スコープの調整
+  import Modelica.Media.Interfaces;
+  
+  partial package vdWGas "Medium model of a van der Waals gas"
   
     extends Interfaces.PartialPureSubstance(
        ThermoStates=Modelica.Media.Interfaces.Choices.IndependentVariables.pT,
