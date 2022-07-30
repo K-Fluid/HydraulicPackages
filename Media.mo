@@ -1,6 +1,10 @@
 package Media
   //スコープの調整
-  import Modelica.Media.Interfaces;
+  import Interfaces = Modelica.Media.Interfaces;
+  import Functions = Modelica.Media.IdealGases.Common.Functions;
+  import IdealGases = Modelica.Media.IdealGases;
+  import Common = Modelica.Media.IdealGases.Common;
+  import DataRecord = Modelica.Media.IdealGases.Common.DataRecord;
   
   partial package vdWGas "Medium model of a van der Waals gas"
   
@@ -530,4 +534,13 @@ package Media
   </p>
   </html>"));
   end vdWGas;
+  
+  package vdW_N2 "Ideal gas \"N2\" from NASA Glenn coefficients"
+    extends vdWGas(
+       mediumName="Nitrogen",
+       data=Common.SingleGasesData.N2,
+       fluidConstants={Common.FluidData.N2});
+    annotation (Documentation(info="<html><div>
+      <img src=\"modelica://Modelica/Resources/Images/Media/IdealGases/SingleGases/N2.png\"></div></html>"));
+  end vdW_N2;
 end Media;
