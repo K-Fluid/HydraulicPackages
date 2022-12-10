@@ -440,20 +440,20 @@ package Media
 //This function is for the density of vdWGas
 
     function density_pT
-  	extends Modelica.Icons.Function;
+      extends Modelica.Icons.Function;
       input Pressure p "Pressure";
       input Temperature T "Temperature";
       output Density d "Density";
     protected
-  	function f_nonlinear "Solve van der Waals equation for d with given p, T"
-  	  extends Modelica.Math.Nonlinear.Interfaces.partialScalarFunction;
-  	  input DataRecord data "Ideal gas data";
+      function f_nonlinear "Solve van der Waals equation for d with given p, T"
+        extends Modelica.Math.Nonlinear.Interfaces.partialScalarFunction;
+        input DataRecord data "Ideal gas data";
         input Pressure p "Pressure";
         input Temperature T "Temperature";
         input Pressure pc "Critical pressure";
         input Temperature Tc "Critical temperature";
-  	  Real av=27*data.MM^2*data.R_s^2*Tc^2/64/pc "van der Waals constant of gas";
-  	  Real bv=data.MM*data.R_s*Tc/8/pc "van der Waals constant of gas";
+        Real av=27*data.MM^2*data.R_s^2*Tc^2/64/pc "van der Waals constant of gas";
+        Real bv=data.MM*data.R_s*Tc/8/pc "van der Waals constant of gas";
       algorithm
         y := (p + av*u^2/data.MM^2)*(data.MM - bv*u) - u*data.MM*data.R_s*T; //van der Waals equation, d=u
       end f_nonlinear;
@@ -462,7 +462,7 @@ package Media
       Density dc "Critical density"; //dc=MM/3/bv
   
     algorithm
-    	assert(fluidConstants[1].hasCriticalData,
+      assert(fluidConstants[1].hasCriticalData,
       "Failed to compute density_pT: For the species \"" + mediumName + "\" no critical data is available.");
       dc := 8/3*pc/data.R_s/Tc;
       d := Modelica.Math.Nonlinear.solveOneNonlinearEquation(
