@@ -55,7 +55,7 @@ package Media
   
       // Has to be written in the form d=f(p,T) in order that static
       // state selection for p and T is possible
-      d = density(p, T); //d = p/(R_s*T)
+      d = density_pT(p, T); //d = p/(R_s*T)
       // connect state with BaseProperties
       state.T = T;
       state.p = p;
@@ -97,6 +97,8 @@ package Media
         annotation(Inline=true,smoothOrder=2);
       end setState_psX;
   
+      //setState_dTX is modified for van der Waals model.
+      
       redeclare function setState_dTX
       "Return thermodynamic state as function of d, T and composition X"
         extends Modelica.Icons.Function;
@@ -104,8 +106,18 @@ package Media
         input Temperature T "Temperature";
         input MassFraction X[:]=reference_X "Mass fractions";
         output ThermodynamicState state;
+      protected
+        AbsolutePressure pc=fluidConstants[1].criticalPressure "Critical pressure";
+        Temperature Tc=fluidConstants[1].criticalTemperature "Critical temperature";
+        Real av "van der Waals constant of gas";
+        Real bv "van der Waals constant of gas";
       algorithm
-        state := ThermodynamicState(p=d*data.R_s*T,T=T);
+        assert(fluidConstants[1].hasCriticalData,
+        "Failed to compute density_pT: For the species \"" + mediumName + "\" no critical data is available.");
+        av := 27*data.MM^2*data.R_s^2*Tc^2/64/pc;
+        bv := data.MM*data.R_s*Tc/8/pc;
+        p := d*data.MM*data.R_s*T/(data.MM - bv*d) - av*d^2/data.MM^2;
+        state := ThermodynamicState(p=p, T=T);
         annotation(Inline=true,smoothOrder=2);
       end setState_dTX;
   
@@ -437,29 +449,31 @@ package Media
   </html>"));
     end thermalConductivityEstimate;
     
-//This function is for the density of vdWGas
+  //density_pT is for the density of vdWGas.
 
     function density_pT
       extends Modelica.Icons.Function;
-      input Pressure p "Pressure";
+      input AbsolutePressure p "Pressure";
       input Temperature T "Temperature";
       output Density d "Density";
     protected
+      AbsolutePressure pc=fluidConstants[1].criticalPressure "Critical pressure";
+      Temperature Tc=fluidConstants[1].criticalTemperature "Critical temperature";
+      Density dc "Critical density"; //dc=MM/3/bv
+      Real av "van der Waals constant of gas";
+      Real bv "van der Waals constant of gas";
       function f_nonlinear "Solve van der Waals equation for d with given p, T"
         extends Modelica.Math.Nonlinear.Interfaces.partialScalarFunction;
         input DataRecord data "Ideal gas data";
-        input Pressure p "Pressure";
+        input AbsolutePressure p "Pressure";
         input Temperature T "Temperature";
-        input Pressure pc "Critical pressure";
+        input AbsolutePressure pc "Critical pressure";
         input Temperature Tc "Critical temperature";
-        Real av=27*data.MM^2*data.R_s^2*Tc^2/64/pc "van der Waals constant of gas";
-        Real bv=data.MM*data.R_s*Tc/8/pc "van der Waals constant of gas";
       algorithm
+        av := 27*data.MM^2*data.R_s^2*Tc^2/64/pc;
+        bv := data.MM*data.R_s*Tc/8/pc;
         y := (p + av*u^2/data.MM^2)*(data.MM - bv*u) - u*data.MM*data.R_s*T; //van der Waals equation, d=u
       end f_nonlinear;
-      Pressure pc=fluidConstants[1].criticalPressure "Critical pressure";
-      Temperature Tc=fluidConstants[1].criticalTemperature "Critical temperature";
-      Density dc "Critical density"; //dc=MM/3/bv
   
     algorithm
       assert(fluidConstants[1].hasCriticalData,
