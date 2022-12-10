@@ -143,7 +143,7 @@ package Media
   
     redeclare function extends density "Return density of ideal gas"
     algorithm
-      d := state.p/(data.R_s*state.T);
+      d := density_pT(state.p, state.T); //d := state.p/(data.R_s*state.T);
       annotation(Inline=true,smoothOrder=2);
     end density;
   
